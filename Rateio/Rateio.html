@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Centro de Custo — Cruzamento</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="jav.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+    <div class="header-logo">
+    <span class="header-badge">Guima ConSeCo</span>
+    </header>
+
+    <main>
+    <div class="page-title">Cruzamento de Centros de Custo</div>
+    <br>  
+
+        <!-- Steps -->
+    <div class="steps">
+        <div class="step active" id="step1"><div class="step-num">1</div><div class="step-label">Importar planilhas</div></div>
+        <div class="step-line"></div>
+        <div class="step" id="step2"><div class="step-num">2</div><div class="step-label">Confirmar colunas</div></div>
+        <div class="step-line"></div>
+        <div class="step" id="step3"><div class="step-num">3</div><div class="step-label">Processar e exportar</div></div>
+    </div>
+
+    <div id="alertBox" class="alert"></div>
+    <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+
+    <!-- Upload -->
+    <div class="upload-grid">
+        <div class="upload-card" id="card1" onclick="document.getElementById('file1').click()">
+        <div class="upload-icon" id="icon1">📋</div>
+        <div class="upload-title">Planilha de colaboradores</div>
+        <div class="upload-sub">Arquivo principal com cadastro,<br>cargo, admissão etc.</div>
+        <br>
+        
+        <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('file1').click()">Selecionar arquivo</button>
+        <div class="file-info" id="info1"></div>
+        <input type="file" id="file1" accept=".xlsx,.xls,.csv" onchange="loadFile(this,1)">
+        </div>
+        <div class="upload-card" id="card2" onclick="document.getElementById('file2').click()">
+        <div class="upload-icon" id="icon2">🗂️</div>
+        <div class="upload-title">Tabela de centros de custo</div>
+        <div class="upload-sub">Planilha de referência com<br>códigos e descrições.</div>
+        <br>
+        <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('file2').click()">Selecionar arquivo</button>
+        <div class="file-info" id="info2"></div>
+        <input type="file" id="file2" accept=".xlsx,.xls,.csv" onchange="loadFile(this,2)">
+        </div>
+    </div>
+
+    <!-- Config de colunas -->
+    <div class="config-card" id="configCard">
+        <div class="config-title">Confirmar colunas</div>
+        <div class="config-sub">Verifique se as colunas foram detectadas corretamente. Ajuste se necessário.</div>
+        <div class="config-flow">
+        <div class="field-group">
+            <label>Planilha 1 › Chave de busca</label>
+            <select id="col1Key"></select>
+        </div>
+        <div class="arrow-lbl">→</div>
+        <div class="field-group">
+            <label>Planilha 2 › Coluna de referência</label>
+            <select id="col2Key"></select>
+        </div>
+        <div class="arrow-lbl">→</div>
+        <div class="field-group">
+            <label>Planilha 2 › Valor a trazer</label>
+            <select id="col2Val"></select>
+        </div>
+        <div class="arrow-lbl">→</div>
+        <div class="field-group">
+            <label>Planilha 1 › Coluna de destino</label>
+            <select id="col1Dest"></select>
+        </div>
+        </div>
+    </div>
+
+    <!-- Processar -->
+    <div class="process-row" id="processRow" style="display:none">
+        <button class="btn-reset" onclick="resetAll()">↺ Recomeçar</button>
+        <button class="btn-process" id="btnProcess" onclick="processData()">⚙️ Processar cruzamento</button>
+    </div>
+
+    <!-- Resultado -->
+    <div class="result-card" id="resultCard">
+        <div class="result-header">
+        <div class="result-title">✅ Resultado do cruzamento</div>
+        <div class="result-stats">
+            <div class="stat"><div class="n" id="statTotal" style="color:#1a2e1a">0</div><div class="l">total de linhas</div></div>
+            <div class="stat"><div class="n" id="statOk" style="color:#2d7a52">0</div><div class="l">preenchidos</div></div>
+            <div class="stat"><div class="n" id="statErr" style="color:#c0392b">0</div><div class="l">não encontrados</div></div>
+            <div class="stat"><div class="n" id="statPct" style="color:#1a5c3a">0%</div><div class="l">aproveitamento</div></div>
+        </div>
+        </div>
+        <div class="result-actions">
+        <button class="btn-dl" onclick="downloadResult()">⬇ Baixar Excel completo (.xlsx)</button>
+        <button class="btn-dl sec" onclick="downloadResult('csv')">⬇ Baixar CSV</button>
+        <button class="btn-dl warn-btn" id="btnErrors" onclick="downloadErrors()">⚠ Baixar só os erros</button>
+        </div>
+        <div class="table-wrap">
+        <table>
+            <thead id="previewHead"></thead>
+            <tbody id="previewBody"></tbody>
+        </table>
+        </div>
+        <div class="preview-note" id="previewNote"></div>
+    </div>
+    </main>
+    </body>
+</html>
