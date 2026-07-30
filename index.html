@@ -3,115 +3,155 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Centro de Custo — Cruzamento</title>
+<title>Rateio com Impostos — Lançamento</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="script.js"></script>
 <link rel="stylesheet" href="style.css">
+<script src="script.js"></script>
 </head>
 <body>
 
-    <header>
-    <div class="header-logo">
-    <span class="header-badge">Guima ConSeCo</span>
-    </header>
+<header>
+  <div class="header-logo">
+    <span>Guima ConSeCo</span>
+    <span class="header-badge">Rateio com Impostos</span>
+  </div>
+</header>
 
-    <main>
-    <div class="page-title">Cruzamento de Centros de Custo</div>
-    <br>  
+<main>
+  <div class="page-title">Lançamento de Rateio (Frete + PIS + COFINS)</div>
+  <div class="page-sub">Envie apenas a tabela dinâmica com os valores por Centro de Custo. A ferramenta calcula o rateio de Frete, PIS e COFINS e devolve a planilha pronta, no layout de 7 colunas / 6 blocos, sem cabeçalho.</div>
 
-        <!-- Steps -->
-    <div class="steps">
-        <div class="step active" id="step1"><div class="step-num">1</div><div class="step-label">Importar planilhas</div></div>
-        <div class="step-line"></div>
-        <div class="step" id="step2"><div class="step-num">2</div><div class="step-label">Confirmar colunas</div></div>
-        <div class="step-line"></div>
-        <div class="step" id="step3"><div class="step-num">3</div><div class="step-label">Processar e exportar</div></div>
+  <div class="steps">
+    <div class="step active" id="step1"><div class="step-num">1</div><div class="step-label">Dados da NF</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step2"><div class="step-num">2</div><div class="step-label">Tabela dinâmica</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step3"><div class="step-num">3</div><div class="step-label">Processar e exportar</div></div>
+  </div>
+
+  <div id="alertBox" class="alert"></div>
+  <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <div class="card">
+    <div class="card-title">Dados da NF</div>
+    <div class="card-sub">Preencha os campos que mudam a cada lançamento.</div>
+
+    <div class="field-grid">
+      <div class="field-group">
+        <label>Data do lançamento</label>
+        <input type="date" id="dataLanc">
+      </div>
+      <div class="field-group">
+        <label>Número da NF</label>
+        <input type="text" id="nfNum" placeholder="ex: 296">
+      </div>
+      <div class="field-group">
+        <label>Fornecedor / Transportadora</label>
+        <input type="text" id="fornecedor" list="fornecedoresList" placeholder="ex: DCS LOGISTICA">
+        <datalist id="fornecedoresList">
+          <option value="DCS LOGISTICA">
+          <option value="EDUARDO">
+          <option value="POLITEK">
+          <option value="SILVIO SOUZA">
+        </datalist>
+      </div>
+      <div class="field-group">
+        <label>CC pai (destino)</label>
+        <input type="text" id="ccPai" value="1100112">
+        <div class="field-hint">ex: 1100112 - CD</div>
+      </div>
     </div>
 
-    <div id="alertBox" class="alert"></div>
-    <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
-
-    <!-- Upload -->
-    <div class="upload-grid">
-        <div class="upload-card" id="card1" onclick="document.getElementById('file1').click()">
-        <div class="upload-icon" id="icon1">📋</div>
-        <div class="upload-title">Planilha de colaboradores</div>
-        <div class="upload-sub">Arquivo principal com cadastro,<br>cargo, admissão etc.</div>
-        <br>
-        
-        <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('file1').click()">Selecionar arquivo</button>
-        <div class="file-info" id="info1"></div>
-        <input type="file" id="file1" accept=".xlsx,.xls,.csv" onchange="loadFile(this,1)">
+    <div class="field-grid" style="margin-top:14px">
+      <div class="field-group">
+        <label>% PIS</label>
+        <input type="text" id="pisPct" value="1,65">
+      </div>
+      <div class="field-group">
+        <label>Valor do PIS (R$)</label>
+        <div class="pct-row">
+          <input type="text" id="pisValor" placeholder="0,00">
         </div>
-        <div class="upload-card" id="card2" onclick="document.getElementById('file2').click()">
-        <div class="upload-icon" id="icon2">🗂️</div>
-        <div class="upload-title">Tabela de centros de custo</div>
-        <div class="upload-sub">Planilha de referência com<br>códigos e descrições.</div>
-        <br>
-        <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('file2').click()">Selecionar arquivo</button>
-        <div class="file-info" id="info2"></div>
-        <input type="file" id="file2" accept=".xlsx,.xls,.csv" onchange="loadFile(this,2)">
+      </div>
+      <div class="field-group">
+        <label>% COFINS</label>
+        <input type="text" id="cofinsPct" value="7,60">
+      </div>
+      <div class="field-group">
+        <label>Valor do COFINS (R$)</label>
+        <div class="pct-row">
+          <input type="text" id="cofinsValor" placeholder="0,00">
         </div>
+      </div>
+    </div>
+    <div class="process-row" style="margin-top:10px; margin-bottom:0;">
+      <button class="btn-calc" onclick="calcularPisCofins()">Calcular PIS/COFINS a partir do % (usa o total da tabela dinâmica)</button>
     </div>
 
-    <!-- Config de colunas -->
-    <div class="config-card" id="configCard">
-        <div class="config-title">Confirmar colunas</div>
-        <div class="config-sub">Verifique se as colunas foram detectadas corretamente. Ajuste se necessário.</div>
-        <div class="config-flow">
-        <div class="field-group">
-            <label>Planilha 1 › Chave de busca</label>
-            <select id="col1Key"></select>
-        </div>
-        <div class="arrow-lbl">→</div>
-        <div class="field-group">
-            <label>Planilha 2 › Coluna de referência</label>
-            <select id="col2Key"></select>
-        </div>
-        <div class="arrow-lbl">→</div>
-        <div class="field-group">
-            <label>Planilha 2 › Valor a trazer</label>
-            <select id="col2Val"></select>
-        </div>
-        <div class="arrow-lbl">→</div>
-        <div class="field-group">
-            <label>Planilha 1 › Coluna de destino</label>
-            <select id="col1Dest"></select>
-        </div>
-        </div>
+    <details class="adv">
+      <summary>Configurações avançadas (contas fixas do sistema)</summary>
+      <div class="field-grid">
+        <div class="field-group"><label>Conta Frete</label><input type="text" id="contaFrete" value="11905"></div>
+        <div class="field-group"><label>Conta PIS</label><input type="text" id="contaPis" value="11813"></div>
+        <div class="field-group"><label>Conta COFINS</label><input type="text" id="contaCofins" value="11814"></div>
+        <div class="field-group"><label>Conta transitória</label><input type="text" id="contaTransitoria" value="51112"></div>
+      </div>
+      <div class="field-grid two" style="margin-top:14px">
+        <div class="field-group"><label>Marcação de posição (fixo)</label><input type="text" id="codigoPosicao" value="8"></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Tabela dinâmica (Centro de Custo × Valor)</div>
+    <div class="card-sub">Envie a planilha com 2 colunas: o código do Centro de Custo e o valor de Frete/Valor cobrado já somado por CC. A aba "DI" será usada automaticamente se existir.</div>
+    <div class="upload-card" id="pivotCard" onclick="document.getElementById('pivotFile').click()">
+      <div class="upload-icon" id="pivotIcon">📊</div>
+      <div class="upload-title">Selecionar tabela dinâmica</div>
+      <div class="upload-sub">Excel (.xlsx/.xls) ou CSV</div>
+      <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('pivotFile').click()">Selecionar arquivo</button>
+      <div class="file-info" id="pivotInfo"></div>
+      <input type="file" id="pivotFile" accept=".xlsx,.xls,.csv" onchange="loadPivot(this)">
     </div>
 
-    <!-- Processar -->
-    <div class="process-row" id="processRow" style="display:none">
-        <button class="btn-reset" onclick="resetAll()">↺ Recomeçar</button>
-        <button class="btn-process" id="btnProcess" onclick="processData()">⚙️ Processar cruzamento</button>
+    <div class="field-grid two" id="pivotColsRow" style="display:none; margin-top:16px">
+      <div class="field-group">
+        <label>Coluna do Centro de Custo</label>
+        <select id="pivotCcCol"></select>
+      </div>
+      <div class="field-group">
+        <label>Coluna do Valor</label>
+        <select id="pivotValCol"></select>
+      </div>
     </div>
+  </div>
 
-    <!-- Resultado -->
-    <div class="result-card" id="resultCard">
-        <div class="result-header">
-        <div class="result-title">✅ Resultado do cruzamento</div>
-        <div class="result-stats">
-            <div class="stat"><div class="n" id="statTotal" style="color:#1a2e1a">0</div><div class="l">total de linhas</div></div>
-            <div class="stat"><div class="n" id="statOk" style="color:#2d7a52">0</div><div class="l">preenchidos</div></div>
-            <div class="stat"><div class="n" id="statErr" style="color:#c0392b">0</div><div class="l">não encontrados</div></div>
-            <div class="stat"><div class="n" id="statPct" style="color:#1a5c3a">0%</div><div class="l">aproveitamento</div></div>
-        </div>
-        </div>
-        <div class="result-actions">
-        <button class="btn-dl" onclick="downloadResult()">⬇ Baixar Excel completo (.xlsx)</button>
-        <button class="btn-dl sec" onclick="downloadResult('csv')">⬇ Baixar CSV</button>
-        <button class="btn-dl warn-btn" id="btnErrors" onclick="downloadErrors()">⚠ Baixar só os erros</button>
-        </div>
-        <div class="table-wrap">
-        <table>
-            <thead id="previewHead"></thead>
-            <tbody id="previewBody"></tbody>
-        </table>
-        </div>
-        <div class="preview-note" id="previewNote"></div>
+  <div class="process-row">
+    <button class="btn-reset" onclick="resetAll()">↺ Recomeçar</button>
+    <button class="btn-process" id="btnProcess" onclick="processData()">⚙️ Calcular e montar lançamento</button>
+  </div>
+
+  <div class="result-card" id="resultCard">
+    <div class="result-header">
+      <div class="result-title">✅ Lançamento calculado</div>
+      <div class="result-stats">
+        <div class="stat"><div class="n" id="statCcs" style="color:#1a2e1a">0</div><div class="l">CCs</div></div>
+        <div class="stat"><div class="n" id="statFrete" style="color:#1a5c3a">R$ 0,00</div><div class="l">total</div></div>
+        <div class="stat"><div class="n" id="statPis" style="color:#1a5c3a">R$ 0,00</div><div class="l">total pis</div></div>
+        <div class="stat"><div class="n" id="statCofins" style="color:#1a5c3a">R$ 0,00</div><div class="l">total cofins</div></div>
+      </div>
     </div>
-    </main>
-    </body>
+    <div class="result-actions">
+      <button class="btn-dl" id="btnDownload" onclick="downloadResult()">⬇ Baixar Excel (.xlsx)</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tipo</th><th>Data</th><th>Conta A</th><th>Conta B</th><th>Valor</th><th>Histórico / D-C</th><th>Extra</th></tr></thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+    <div class="preview-note" id="previewNote"></div>
+  </div>
+</main>
+</body>
 </html>
