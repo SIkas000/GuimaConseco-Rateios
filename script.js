@@ -111,6 +111,24 @@ function calcularPisCofins(){
 
 function round2(n){ return Math.round((n + Number.EPSILON)*100)/100; }
 
+// Índice do menor e do maior valor de um array.
+function indexOfMin(arr){ let idx = 0; arr.forEach((v,i)=>{ if(v < arr[idx]) idx = i; }); return idx; }
+function indexOfMax(arr){ let idx = 0; arr.forEach((v,i)=>{ if(v > arr[idx]) idx = i; }); return idx; }
+
+// Ajusta um array de valores já arredondados para que a soma bata exatamente
+// com "totalAlvo" (ex: 100% ou o valor total de PIS/COFINS).
+//  - Se a soma ficou MAIOR que o alvo (sobrou), a diferença é TIRADA do MAIOR valor.
+//  - Se a soma ficou MENOR que o alvo (faltou), a diferença é SOMADA no MENOR valor.
+// Retorna o índice do item ajustado, ou -1 se nenhum ajuste foi necessário.
+function ajustarParaTotal(valores, totalAlvo){
+  const soma = round2(valores.reduce((a,b)=>a+b,0));
+  const diff = round2(totalAlvo - soma);
+  if(diff === 0) return -1;
+  const idx = diff > 0 ? indexOfMin(valores) : indexOfMax(valores);
+  valores[idx] = round2(valores[idx] + diff);
+  return idx;
+}
+
 async function processData(){
   hideAlert();
   if(!pivotRows.length){ showAlert('⚠️ Envie a tabela dinâmica com os valores por Centro de Custo.','error'); return; }
@@ -147,15 +165,22 @@ async function processData(){
   const histCofins = `Recl. COFINS S/ NF. ${nfNum} de ${fornecedor}`;
 
   const pcts = pivotData.map(r => round2(r.valor/totalFrete*100));
-  let idxMenor = 0;
-  pivotData.forEach((r,i)=>{ if(r.valor < pivotData[idxMenor].valor) idxMenor = i; });
-  pcts[idxMenor] = round2(pcts[idxMenor] + round2(100 - pcts.reduce((a,b)=>a+b,0)));
+  const idxAjustePct = ajustarParaTotal(pcts, 100);
 
-  const pisPorCc = pcts.map(p => round2(p*totalPis/100));
-  pisPorCc[idxMenor] = round2(pisPorCc[idxMenor] + round2(totalPis - pisPorCc.reduce((a,b)=>a+b,0)));
+  // Valor de Frete por CC: arredonda em 2 casas e, se a soma dos arredondados
+  // não bater com o total (por causa das casas decimais originais), ajusta
+  // apenas 1 célula (maior valor se sobrou, menor valor se faltou).
+  const valoresFrete = pivotData.map(r => round2(r.valor));
+  const idxAjusteFrete = ajustarParaTotal(valoresFrete, totalFrete);
 
-  const cofinsPorCc = pcts.map(p => round2(p*totalCofins/100));
-  cofinsPorCc[idxMenor] = round2(cofinsPorCc[idxMenor] + round2(totalCofins - cofinsPorCc.reduce((a,b)=>a+b,0)));
+  // PIS e COFINS são calculados direto a partir do VALOR de Frete de cada CC
+  // (proporção exata valor/totalFrete), e não a partir do % já arredondado —
+  // assim o erro de arredondamento do % não se acumula na conta de PIS/COFINS.
+  const pisPorCc = valoresFrete.map(v => round2(v/totalFrete*totalPis));
+  const idxAjustePis = ajustarParaTotal(pisPorCc, totalPis);
+
+  const cofinsPorCc = valoresFrete.map(v => round2(v/totalFrete*totalCofins));
+  const idxAjusteCofins = ajustarParaTotal(cofinsPorCc, totalCofins);
 
   setProgress(55);
   await tick();
@@ -181,7 +206,7 @@ async function processData(){
   addDetail(ccPai, 100, totalCofins, 'C');
 
   addHeader(contaTransitoria, contaFrete, totalFrete, histNf);
-  pivotData.forEach((r,i)=> addDetail(r.cc, pcts[i], r.valor, 'D'));
+  pivotData.forEach((r,i)=> addDetail(r.cc, pcts[i], valoresFrete[i], 'D'));
 
   addHeader(contaPis, contaTransitoria, totalPis, histPis);
   pivotData.forEach((r,i)=> addDetail(r.cc, pcts[i], pisPorCc[i], 'C'));
@@ -209,7 +234,15 @@ async function processData(){
     }
   }).join('');
 
-  document.getElementById('previewNote').textContent = `${linhas.length} linhas geradas (6 blocos) para ${pivotData.length} centros de custo. Diferença de arredondamento absorvida pelo CC de menor valor (${pivotData[idxMenor].cc}).`;
+  const ajustesInfo = [];
+  if(idxAjusteFrete  >= 0) ajustesInfo.push(`Frete (CC ${pivotData[idxAjusteFrete].cc})`);
+  if(idxAjustePct  >= 0) ajustesInfo.push(`% (CC ${pivotData[idxAjustePct].cc})`);
+  if(idxAjustePis  >= 0) ajustesInfo.push(`PIS (CC ${pivotData[idxAjustePis].cc})`);
+  if(idxAjusteCofins >= 0) ajustesInfo.push(`COFINS (CC ${pivotData[idxAjusteCofins].cc})`);
+  const ajustesTxt = ajustesInfo.length
+    ? `Diferença de arredondamento ajustada em: ${ajustesInfo.join(', ')} — excesso tirado do maior valor, falta somada no menor.`
+    : `Nenhum ajuste de arredondamento foi necessário.`;
+  document.getElementById('previewNote').textContent = `${linhas.length} linhas geradas (6 blocos) para ${pivotData.length} centros de custo. ${ajustesTxt}`;
 
   setProgress(100);
   document.getElementById('resultCard').classList.add('visible');
